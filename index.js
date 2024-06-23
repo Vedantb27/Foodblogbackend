@@ -33,15 +33,18 @@ mongoose.connect(MONGOURL).then(() => {
 
 // Middleware to protect routes
 const authenticateToken = (req, res, next) => {
-    const token = req.headers['authorization'];
-    if (token == null) return res.sendStatus(401);
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+  if (token == null) return res.sendStatus(401); // No token, unauthorized
 
-    jwt.verify(token, JWT_SECRET, (err, user) => {
-        if (err) return res.sendStatus(403);
-        req.user = user;
-        next();
-    });
+  jwt.verify(token, JWT_SECRET, (err, user) => {
+      if (err) return res.sendStatus(403); // Invalid token, forbidden
+      req.user = user; // Attach decoded user information to request
+      next(); // Proceed to the next middleware/route handler
+  });
 };
+
+
 
 // Login endpoint
 app.post("/login", async (req, res) => {
@@ -90,7 +93,7 @@ app.get("/menu", async (req, res) => {
 });
 
 
-app.post("/update-json", async (req, res) => {
+app.post("/update-json", authenticateToken, async (req, res) => {
     let data = req.body;
 
     if (Array.isArray(data) && data.length === 0) {
