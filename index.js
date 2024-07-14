@@ -9,20 +9,16 @@ const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const cors = require("cors");
 
-
-
 const app = express();
 app.use(bodyParser.json());
 app.use(cors());
 
-
 const PORT = 10000;
 const MONGOURL = "mongodb+srv://bopanwarvedant27:xddK5q9NYgXgZ4Ts@cluster0.xsprekn.mongodb.net/crud";
 const JWT_SECRET = process.env.JWT_SECRET || "your_jwt_secret_key";
-const URL  = "mongodb+srv://bopanwarvedant27:xddK5q9NYgXgZ4Ts@cluster0.xsprekn.mongodb.net";
-const client = new MongoClient(MONGOURL );
+const URL = "mongodb+srv://bopanwarvedant27:xddK5q9NYgXgZ4Ts@cluster0.xsprekn.mongodb.net";
+const client = new MongoClient(MONGOURL);
 const dbName = "myDatabase";
-
 
 mongoose.connect(MONGOURL).then(() => {
     console.log("Database connected successfully.");
@@ -44,129 +40,160 @@ const authenticateToken = (req, res, next) => {
   });
 };
 
+// Initialize an empty object to store the JSON data
+let storedJsonData = {};
 
+// Self-calling function to fetch JSON data initially
+(async function fetchInitialJsonData() {
+  try {
+    console.log("Fetching initial JSON data...");
+    await client.connect();
+    console.log("Connected correctly to server");
+
+    const db = client.db(dbName);
+    const col = db.collection("myCollection");
+
+    // Retrieve the current JSON object (assuming only one document is in the collection)
+    const document = await col.findOne({});
+    if (document) {
+      storedJsonData = document;
+      console.log("Initial JSON data fetched and stored:", storedJsonData);
+    } else {
+      console.log("No initial JSON data found");
+    }
+  } catch (err) {
+    console.log(err.stack);
+  } finally {
+    await client.close();
+  }
+})();
 
 // Login endpoint
 app.post("/login", async (req, res) => {
-    const { email, password } = req.body;
-    console.log("Checking credentials for email:", email);
-    console.log("Password from request:", password);
-    // Find user by email
-    const user = await User.findOne({ email });
-    console.log("User found:", user);
-    if (!user) {
-        return res.status(400).json({ message: "Invalid credentials" });
-    }
+  const { email, password } = req.body;
+  console.log("Checking credentials for email:", email);
+  console.log("Password from request:", password);
+  // Find user by email
+  const user = await User.findOne({ email });
+  console.log("User found:", user);
+  if (!user) {
+    return res.status(400).json({ message: "Invalid credentials" });
+  }
 
-    // Ensure user object has password field
-    if (!user.password) {
-        console.log("User does not have a password field:", user);
-        return res.status(400).json({ message: "Invalid credentials" });
-    }
+  // Ensure user object has password field
+  if (!user.password) {
+    console.log("User does not have a password field:", user);
+    return res.status(400).json({ message: "Invalid credentials" });
+  }
 
-    // Trim and convert passwords to lowercase for case-insensitive comparison
-    const trimmedPassword = password.trim().toLowerCase();
-    const trimmedUserPassword = user.password.trim().toLowerCase();
+  // Trim and convert passwords to lowercase for case-insensitive comparison
+  const trimmedPassword = password.trim().toLowerCase();
+  const trimmedUserPassword = user.password.trim().toLowerCase();
 
-    // Compare plaintext passwords
-    if (trimmedPassword !== trimmedUserPassword) {
-        return res.status(400).json({ message: "Invalid credentials" });
-    }
+  // Compare plaintext passwords
+  if (trimmedPassword !== trimmedUserPassword) {
+    return res.status(400).json({ message: "Invalid credentials" });
+  }
 
-    // If passwords match, generate JWT token
-    const token = jwt.sign({ userId: user._id, email: user.email }, JWT_SECRET, { expiresIn: '1h' });
-    res.json({ token });
+  // If passwords match, generate JWT token
+  const token = jwt.sign({ userId: user._id, email: user.email }, JWT_SECRET, { expiresIn: '1h' });
+  res.json({ token });
 });
 
 // New endpoint to fetch menu data
 app.get("/menu", async (req, res) => {
-    try {
-         
-        const menu = await Menu.findOne(); // Fetch the first document in the 'menus' collection
-        console.log("get the json data");
-        if (!menu) {
-            return res.status(404).json({ message: "Menu data not found" });
-        }
-        res.json(menu);
-    }catch (error) {
-        console.error("Error fetching menu data:", error);
-        res.status(500).json({ message: "Server error", error });
+  try {
+    const menu = await Menu.findOne(); // Fetch the first document in the 'menus' collection
+    console.log("get the json data");
+    if (!menu) {
+      return res.status(404).json({ message: "Menu data not found" });
     }
+    res.json(menu);
+  } catch (error) {
+    console.error("Error fetching menu data:", error);
+    res.status(500).json({ message: "Server error", error });
+  }
 });
 
-
+// Update JSON data endpoint
 app.post("/update-json", authenticateToken, async (req, res) => {
-    let data = req.body;
+  let data = req.body;
 
-    if (Array.isArray(data) && data.length === 0) {
-      data = [
-          {
-              "name": "New Category 1",
-              "imageId": "",
-              "items": []
-          }
-      ];
+  if (Array.isArray(data) && data.length === 0) {
+    data = [
+      {
+        "name": "New Category 1",
+        "imageId": "",
+        "items": []
+      }
+    ];
   }
 
+  try {
+    await client.connect();
+    console.log("Connected correctly to server");
+
+    const db = client.db(dbName);
+    const col = db.collection("myCollection");
+
+    const newJsonObject = {};
+
+    data.forEach((category) => {
+      const categoryName = category.name;
+      const categoryData = {
+        imageId: category.imageId,
+        items: category.items.map((item) => ({
+          cardId: item.cardId,
+          imageId: item.imageId,
+          title: item.title,
+          type: item.type,
+          mealDetail: item.mealDetail,
+          ingredients: item.ingredients,
+          youtubeUrl: item.youtubeUrl,
+        })),
+      };
+      newJsonObject[categoryName] = categoryData;
+    });
+
+    let arrToObj = JSON.stringify(newJsonObject, null, 2);
+
+    // Delete all documents in the collection
+    await col.deleteMany({});
+
+    // Insert the new JSON object
+    const result = await col.insertOne(newJsonObject);
+    console.log("Inserted new document with id:", result.insertedId);
+
+    // Update the storedJsonData with the new JSON object
+    storedJsonData = newJsonObject;
+
+    res.status(200).send({ success: true, insertedId: result.insertedId });
+  } catch (err) {
+    console.log(err.stack);
+    res.status(500).send({ success: false, error: err.message });
+  } finally {
+    await client.close();
+  }
+});
+
+// Get JSON data endpoint
+app.get("/get-json", async (req, res) => {
+  if (Object.keys(storedJsonData).length === 0) {
     try {
+      console.log("Fetching JSON data from database...");
       await client.connect();
       console.log("Connected correctly to server");
-  
+
       const db = client.db(dbName);
       const col = db.collection("myCollection");
-  
-      const newJsonObject = {};
-  
-      data.forEach((category) => {
-        const categoryName = category.name;
-        const categoryData = {
-          imageId: category.imageId,
-          items: category.items.map((item) => ({
-            cardId: item.cardId,
-            imageId: item.imageId,
-            title: item.title,
-            type: item.type,
-            mealDetail: item.mealDetail,
-            ingredients: item.ingredients,
-            youtubeUrl: item.youtubeUrl,
-          })),
-        };
-        newJsonObject[categoryName] = categoryData;
-      });
-  
-      let arrToObj = JSON.stringify(newJsonObject, null, 2);
-  
-      // Delete all documents in the collection
-      await col.deleteMany({});
-  
-      // Insert the new JSON object
-      const result = await col.insertOne(newJsonObject);
-      console.log("Inserted new document with id:", result.insertedId);
-  
-      res.status(200).send({ success: true, insertedId: result.insertedId });
-    } catch (err) {
-      console.log(err.stack);
-      res.status(500).send({ success: false, error: err.message });
-    } finally {
-      await client.close();
-    }
-  });
-  
-  app.get("/get-json", async (req, res) => {
-    try {
-      console.log("api hit");
-      await client.connect();
-      console.log("Connected correctly to server");
-  
-      const db = client.db(dbName);
-      const col = db.collection("myCollection");
-  
+
       // Retrieve the current JSON object (assuming only one document is in the collection)
       const document = await col.findOne({});
-  
+
       if (document) {
+        storedJsonData = document;
         res.status(200).send(document);
-        console.log("response send");
+        console.log("Response sent with database data");
       } else {
         res.status(404).send({ success: false, message: "No document found" });
       }
@@ -176,8 +203,10 @@ app.post("/update-json", authenticateToken, async (req, res) => {
     } finally {
       await client.close();
     }
-  });
-
-
+  } else {
+    res.status(200).send(storedJsonData);
+    console.log("Response sent with stored data");
+  }
+});
 
 module.exports = app;
