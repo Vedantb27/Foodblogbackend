@@ -81,12 +81,11 @@ app.post("/login", async (req, res) => {
 // New endpoint to fetch menu data
 app.get("/menu", async (req, res) => {
     try {
-         console.log("get api hit");
+         
         const menu = await Menu.findOne(); // Fetch the first document in the 'menus' collection
         console.log("get the json data");
         if (!menu) {
             return res.status(404).json({ message: "Menu data not found" });
-            console.log("response is send");
         }
         res.json(menu);
     }catch (error) {
@@ -155,6 +154,7 @@ app.post("/update-json", authenticateToken, async (req, res) => {
   
   app.get("/get-json", async (req, res) => {
     try {
+      console.log("api hit");
       await client.connect();
       console.log("Connected correctly to server");
   
@@ -166,6 +166,7 @@ app.post("/update-json", authenticateToken, async (req, res) => {
   
       if (document) {
         res.status(200).send(document);
+        console.log("response send");
       } else {
         res.status(404).send({ success: false, message: "No document found" });
       }
