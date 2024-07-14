@@ -37,7 +37,7 @@ const fetchInitialJsonData = async () => {
         const document = await col.findOne({});
         if (document) {
             storedJsonData = document;
-            console.log("Initial JSON data fetched and stored:", storedJsonData);
+            console.log("Initial JSON data fetched and stored:");
         } else {
             console.log("No initial JSON data found");
         }
@@ -56,6 +56,7 @@ const ensureDataLoaded = async (req, res, next) => {
     }
     next();
 };
+
 
 // Fetch initial data at server startup
 fetchInitialJsonData().then(() => {
