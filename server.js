@@ -57,7 +57,6 @@ const ensureDataLoaded = async (req, res, next) => {
     next();
 };
 
-
 // Fetch initial data at server startup
 fetchInitialJsonData().then(() => {
     // Routes

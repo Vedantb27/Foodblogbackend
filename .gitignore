@@ -1,2 +1,12 @@
-node_modules
+# Dependency directories
+node_modules/
+
+# Environment variables
 .env
+
+# Log files
+*.log
+
+# Environment-specific files
+.DS_Store
+.vscode/
