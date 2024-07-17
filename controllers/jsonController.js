@@ -109,7 +109,7 @@ const getJsonData = async (req, res) => {
                 res.status(200).send(document);
                 console.log("Response sent with database data");
             } else {
-                res.status(404).send({ success: false, message: "No document found" });
+                res.status(404).send({  });
             }
         } catch (err) {
             console.log(err.stack);
