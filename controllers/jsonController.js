@@ -1,36 +1,12 @@
 const { MongoClient } = require('mongodb');
 
-const URL = process.env.MONGOURL || "mongodb+srv://bopanwarvedant27:xddK5q9NYgXgZ4Ts@cluster0.xsprekn.mongodb.net";
+const URL = process.env.MONGOURL;
 const client = new MongoClient(URL);
 const dbName = "myDatabase";
 
 let storedJsonData = {};
 
-// Self-calling function to fetch JSON data initially
-(async function fetchInitialJsonData() {
-    try {
-        console.log("Fetching initial JSON data...");
-        await client.connect();
-        console.log("Connected correctly to server");
-
-        const db = client.db(dbName);
-        const col = db.collection("myCollection");
-
-        // Retrieve the current JSON object (assuming only one document is in the collection)
-        const document = await col.findOne({});
-        if (document) {
-            storedJsonData = document;
-            console.log("Initial JSON data fetched and stored:");
-        } else {
-            console.log("No initial JSON data found");
-        }
-    } catch (err) {
-        console.log(err.stack);
-    } finally {
-        await client.close();
-    }
-})();
-
+// Function to update JSON data
 const updateJsonData = async (req, res) => {
     let data = req.body;
 
@@ -91,6 +67,7 @@ const updateJsonData = async (req, res) => {
     }
 };
 
+// Function to get JSON data
 const getJsonData = async (req, res) => {
     if (Object.keys(storedJsonData).length === 0) {
         try {
@@ -109,7 +86,7 @@ const getJsonData = async (req, res) => {
                 res.status(200).send(document);
                 console.log("Response sent with database data");
             } else {
-                res.status(404).send({  });
+                res.status(404).send({ message: "No data found" });
             }
         } catch (err) {
             console.log(err.stack);
